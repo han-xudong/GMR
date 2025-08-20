@@ -170,7 +170,7 @@ def process_file(smplx_file_path, tgt_file_path, tgt_robot, SMPLX_FOLDER, tgt_fo
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--robot", default="unitree_g1", choices=["unitree_g1", "booster_t1", "stanford_toddy"])
+    parser.add_argument("--robot", default="unitree_g1")
     parser.add_argument("--src_folder", type=str,
                         required=True,
                         )
@@ -190,12 +190,12 @@ def main():
     tgt_folder = args.tgt_folder
 
     SMPLX_FOLDER = HERE / ".." / "assets" / "body_models"
+    hard_motions_folder = HERE / ".." / "assets" / "hard_motions"
 
     verbose = False
 
-
-    hard_motions_paths = ["../assets/hard_motions/0.txt", 
-                          "../assets/hard_motions/1.txt"]
+    hard_motions_paths = [hard_motions_folder / "0.txt", 
+                          hard_motions_folder / "1.txt"]
     hard_motions = []
     for hard_motions_path in hard_motions_paths:
         with open(hard_motions_path, "r") as f:
@@ -206,6 +206,7 @@ def main():
                     continue
                 motion_path = motion_path.split(",")[0].strip().split(".")[0]
                 hard_motions.append(motion_path)
+                
                 
     args_list = []
     for dirpath, _, filenames in os.walk(src_folder):

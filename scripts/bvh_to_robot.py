@@ -6,6 +6,8 @@ from general_motion_retargeting import RobotMotionViewer
 from general_motion_retargeting.utils.lafan1 import load_lafan1_file
 from rich import print
 from tqdm import tqdm
+import os
+import numpy as np
 
 if __name__ == "__main__":
     
@@ -21,7 +23,7 @@ if __name__ == "__main__":
     
     parser.add_argument(
         "--robot",
-        choices=["unitree_g1", "booster_t1", "stanford_toddy", "fourier_n1", "engineai_pm01"],
+        choices=["unitree_g1", "unitree_g1_with_hands", "booster_t1", "stanford_toddy", "fourier_n1", "engineai_pm01"],
         default="unitree_g1",
     )
         
@@ -42,10 +44,22 @@ if __name__ == "__main__":
         action="store_true",
         default=False,
     )
+
+    parser.add_argument(
+        "--save_path",
+        default=None,
+        help="Path to save the robot motion.",
+    )
     
     
     args = parser.parse_args()
     
+
+    if args.save_path is not None:
+        save_dir = os.path.dirname(args.save_path)
+        if save_dir:  # Only create directory if it's not empty
+            os.makedirs(save_dir, exist_ok=True)
+        qpos_list = []
 
     
     # Load SMPLX trajectory
@@ -83,7 +97,6 @@ if __name__ == "__main__":
     # Start the viewer
     i = 0
 
-    origin_xyz = None
     while i < len(lafan1_data_frames):
         
         # FPS measurement
@@ -106,7 +119,7 @@ if __name__ == "__main__":
 
         # visualize
         robot_motion_viewer.step(
-            root_pos=qpos[:3] - origin_xyz,
+            root_pos=qpos[:3],
             root_rot=qpos[3:7],
             dof_pos=qpos[7:],
             human_motion_data=retargeter.scaled_human_data,
@@ -115,7 +128,31 @@ if __name__ == "__main__":
         )
 
         i += 1
+
+        if args.save_path is not None:
+            qpos_list.append(qpos)
+    
+    if args.save_path is not None:
+        import pickle
+        root_pos = np.array([qpos[:3] for qpos in qpos_list])
+        # save from wxyz to xyzw
+        root_rot = np.array([qpos[3:7][[1,2,3,0]] for qpos in qpos_list])
+        dof_pos = np.array([qpos[7:] for qpos in qpos_list])
+        local_body_pos = None
+        body_names = None
         
+        motion_data = {
+            "fps": motion_fps,
+            "root_pos": root_pos,
+            "root_rot": root_rot,
+            "dof_pos": dof_pos,
+            "local_body_pos": local_body_pos,
+            "link_body_list": body_names,
+        }
+        with open(args.save_path, "wb") as f:
+            pickle.dump(motion_data, f)
+        print(f"Saved to {args.save_path}")
+
     # Close progress bar
     pbar.close()
     
